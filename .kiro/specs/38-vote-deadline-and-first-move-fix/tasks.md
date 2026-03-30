@@ -36,7 +36,7 @@
   - テストの作成・実行・PASS の確認が完了したらタスク完了とする
   - _Requirements: 3.2, 3.3, 3.4, 3.5, 3.7_
 
-- [ ] 3. 投票締切・初手判定・候補ターン番号バグの修正
+- [x] 3. 投票締切・初手判定・候補ターン番号バグの修正
   - [x] 3.1 isAITurn() の手番判定ロジックを修正
     - `packages/api/src/lib/game-utils.ts` の `isAITurn()` を修正
     - 変更前: `const currentColor = game.currentTurn % 2 === 0 ? 'BLACK' : 'WHITE'; return currentColor === game.aiSide;`
@@ -80,7 +80,7 @@
     - **EXPECTED OUTCOME**: テストが PASS する（バグが修正されたことを確認）
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-  - [-] 3.6 保全テストが引き続き PASS することを確認
+  - [x] 3.6 保全テストが引き続き PASS することを確認
     - **Property 2: Preservation** - aiSide='BLACK' の動作・投票集計・AI手実行の保全
     - **IMPORTANT**: タスク2で作成した同じテストを再実行する — 新しいテストは書かない
     - タスク2の保全テストを実行
@@ -88,6 +88,6 @@
     - すべてのテストが修正後も PASS することを確認（リグレッションなし）
     - _Requirements: 3.2, 3.3, 3.4, 3.5, 3.7_
 
-- [~] 4. チェックポイント - 全テストの PASS を確認
+- [-] 4. チェックポイント - 全テストの PASS を確認
   - `pnpm test` で全テストを実行し、すべて PASS することを確認
   - 質問がある場合はユーザーに確認する
