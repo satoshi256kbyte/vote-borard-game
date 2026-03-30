@@ -37,7 +37,7 @@
 
 **Formal Specification:**
 
-```
+```text
 FUNCTION isBugCondition(input)
   INPUT: input of type { functionName: string, game: GameEntity, now?: Date }
   OUTPUT: boolean
@@ -254,7 +254,7 @@ _For any_ 既存の投票集計、AI手実行、ゲーム終了判定のフロ�
 
 **Pseudocode:**
 
-```
+```text
 FOR ALL now WHERE isBugCondition_C1(now) DO
   deadline := calculateVotingDeadline_fixed(now)
   ASSERT deadline は now と同じ日付の 23:59:59.999 JST
@@ -277,7 +277,7 @@ END FOR
 
 **Pseudocode:**
 
-```
+```text
 FOR ALL game WHERE game.aiSide == 'BLACK' DO
   ASSERT isAITurn_original(game) == isAITurn_fixed(game)
 END FOR
