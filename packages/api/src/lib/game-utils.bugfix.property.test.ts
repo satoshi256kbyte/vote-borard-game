@@ -147,3 +147,103 @@ describe('Bugfix Exploration: C2 - isAITurn() の初手判定', () => {
     );
   });
 });
+
+// ============================================================================
+// 保全プロパティテスト（Preservation Property Tests）
+//
+// 修正前の既存動作を記録し、修正後もリグレッションがないことを保証する。
+// これらのテストは未修正コードで PASS する。
+//
+// **Validates: Requirements 3.2, 3.3, 3.4, 3.5, 3.7**
+// ============================================================================
+
+describe('Preservation P1: aiSide=BLACK の isAITurn() が currentTurn % 2 === 0 と一致する', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * P1: aiSide='BLACK' のランダムなターン番号で isAITurn() が currentTurn % 2 === 0 と一致
+   * **Validates: Requirements 3.5**
+   *
+   * 未修正コードでは aiSide='BLACK' の場合:
+   *   currentColor = currentTurn % 2 === 0 ? 'BLACK' : 'WHITE'
+   *   return currentColor === 'BLACK'
+   * → currentTurn % 2 === 0 のとき true、奇数のとき false
+   *
+   * この動作は修正後も保全されるべき。
+   */
+  it('aiSide=BLACK のランダムなターン番号で isAITurn() が currentTurn % 2 === 0 と一致する', () => {
+    fc.assert(
+      fc.property(fc.nat({ max: 100 }), (currentTurn) => {
+        const game = createGameEntity(currentTurn, 'BLACK');
+        const result = isAITurn(game);
+        const expected = currentTurn % 2 === 0;
+        expect(result).toBe(expected);
+      }),
+      { numRuns: 20, endOnFailure: true }
+    );
+  });
+});
+
+describe('Preservation P2: AIの手番のゲームに対して VoteTallyService がスキップする', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * P2: isAITurn が true を返す場合、VoteTallyService はスキップすべき
+   * **Validates: Requirements 3.3, 3.7**
+   *
+   * VoteTallyService.processGame() は最初に isAITurn(game) をチェックし、
+   * true の場合は投票集計をスキップして { status: 'skipped', reason: 'AI turn' } を返す。
+   *
+   * aiSide='BLACK' の偶数ターンでは isAITurn() が true を返すため、
+   * VoteTallyService はスキップする。この動作を保全テストで記録する。
+   */
+  it('aiSide=BLACK の偶数ターンで isAITurn が true → VoteTallyService はスキップすべき', () => {
+    fc.assert(
+      fc.property(
+        fc.nat({ max: 50 }).map((n) => n * 2), // 偶数ターンのみ生成
+        (currentTurn) => {
+          const game = createGameEntity(currentTurn, 'BLACK');
+          // VoteTallyService のスキップ条件: isAITurn(game) === true
+          const shouldSkip = isAITurn(game);
+          expect(shouldSkip).toBe(true);
+        }
+      ),
+      { numRuns: 20, endOnFailure: true }
+    );
+  });
+});
+
+describe('Preservation P3: 集合知の手番のゲームに対して AIMoveExecutor がスキップする', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * P3: isAITurn が false を返す場合、AIMoveExecutor はスキップすべき
+   * **Validates: Requirements 3.2, 3.4**
+   *
+   * AIMoveExecutor.processGame() は最初に isAITurn(game) をチェックし、
+   * false の場合はAI手実行をスキップして { status: 'skipped', reason: 'Not AI turn' } を返す。
+   *
+   * aiSide='BLACK' の奇数ターンでは isAITurn() が false を返すため、
+   * AIMoveExecutor はスキップする。この動作を保全テストで記録する。
+   */
+  it('aiSide=BLACK の奇数ターンで isAITurn が false → AIMoveExecutor はスキップすべき', () => {
+    fc.assert(
+      fc.property(
+        fc.nat({ max: 50 }).map((n) => n * 2 + 1), // 奇数ターンのみ生成
+        (currentTurn) => {
+          const game = createGameEntity(currentTurn, 'BLACK');
+          // AIMoveExecutor のスキップ条件: !isAITurn(game) === true (つまり isAITurn が false)
+          const isAI = isAITurn(game);
+          expect(isAI).toBe(false);
+        }
+      ),
+      { numRuns: 20, endOnFailure: true }
+    );
+  });
+});

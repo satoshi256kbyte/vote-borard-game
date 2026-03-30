@@ -21,7 +21,7 @@
   - テストの作成・実行・失敗の記録が完了したらタスク完了とする
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [~] 2. 保全プロパティテスト（修正前に既存動作を記録）
+- [x] 2. 保全プロパティテスト（修正前に既存動作を記録）
   - **Property 2: Preservation** - aiSide='BLACK' の動作・投票集計・AI手実行の保全
   - **IMPORTANT**: 観察ファーストの方法論に従う
   - 観察: 未修正コードで `isAITurn({ aiSide: 'BLACK', currentTurn: n })` の結果を確認（偶数=true, 奇数=false）
