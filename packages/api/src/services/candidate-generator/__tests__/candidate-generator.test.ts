@@ -55,7 +55,7 @@ function createMockGame(overrides: Partial<GameEntity> = {}): GameEntity {
     gameType: 'OTHELLO',
     status: 'ACTIVE',
     aiSide: 'BLACK',
-    currentTurn: 2,
+    currentTurn: 3,
     boardState: validBoardState,
     createdAt: '2024-01-01T00:00:00.000Z',
     ...overrides,
@@ -99,9 +99,9 @@ describe('CandidateGenerator', () => {
 
   // --- 手番判定テスト (Requirements 1.1, 1.2) ---
 
-  it('手番判定: 次ターンがAI手番（aiSide=BLACK, currentTurn=1 → nextTurn=2=偶数=BLACK）の場合スキップされる', async () => {
-    // aiSide='BLACK', currentTurn=1 → nextTurn=2 → 偶数 → BLACK → AI手番 → スキップ
-    const game = createMockGame({ aiSide: 'BLACK', currentTurn: 1 });
+  it('手番判定: 現在ターンがAI手番（currentTurn=0=偶数=AI）の場合スキップされる', async () => {
+    // currentTurn=0 → 偶数 → AI手番 → スキップ
+    const game = createMockGame({ aiSide: 'BLACK', currentTurn: 0 });
     vi.mocked(mockGameRepo.listByStatus).mockResolvedValue({ items: [game] });
 
     const summary = await generator.generateCandidates();
@@ -109,12 +109,12 @@ describe('CandidateGenerator', () => {
     expect(summary.totalGames).toBe(1);
     expect(summary.skippedCount).toBe(1);
     expect(summary.results[0].status).toBe('skipped');
-    expect(summary.results[0].reason).toBe('Next turn is AI turn');
+    expect(summary.results[0].reason).toBe('Current turn is AI turn');
     expect(mockBedrock.generateText).not.toHaveBeenCalled();
   });
 
-  it('手番判定: 次ターンがAI手番（aiSide=WHITE, currentTurn=2 → nextTurn=3=奇数=WHITE）の場合スキップされる', async () => {
-    // aiSide='WHITE', currentTurn=2 → nextTurn=3 → 奇数 → WHITE → AI手番 → スキップ
+  it('手番判定: 現在ターンがAI手番（aiSide=WHITE, currentTurn=2=偶数=AI）の場合スキップされる', async () => {
+    // currentTurn=2 → 偶数 → AI手番 → スキップ（aiSideに依存しない）
     const game = createMockGame({ aiSide: 'WHITE', currentTurn: 2 });
     vi.mocked(mockGameRepo.listByStatus).mockResolvedValue({ items: [game] });
 
@@ -123,13 +123,13 @@ describe('CandidateGenerator', () => {
     expect(summary.totalGames).toBe(1);
     expect(summary.skippedCount).toBe(1);
     expect(summary.results[0].status).toBe('skipped');
-    expect(summary.results[0].reason).toBe('Next turn is AI turn');
+    expect(summary.results[0].reason).toBe('Current turn is AI turn');
     expect(mockBedrock.generateText).not.toHaveBeenCalled();
   });
 
-  it('手番判定: 次ターンが集合知手番（aiSide=BLACK, currentTurn=2 → nextTurn=3=奇数=WHITE=集合知）の場合候補生成が実行される', async () => {
-    // aiSide='BLACK', currentTurn=2 → nextTurn=3 → 奇数 → WHITE → 集合知手番 → 候補生成
-    const game = createMockGame({ aiSide: 'BLACK', currentTurn: 2 });
+  it('手番判定: 現在ターンが集合知手番（currentTurn=3=奇数=集合知）の場合候補生成が実行される', async () => {
+    // currentTurn=3 → 奇数 → 集合知手番 → 候補生成
+    const game = createMockGame({ aiSide: 'BLACK', currentTurn: 3 });
     vi.mocked(mockGameRepo.listByStatus).mockResolvedValue({ items: [game] });
     vi.mocked(mockCandidateRepo.listByTurn).mockResolvedValue([]);
     vi.mocked(mockBedrock.generateText).mockResolvedValue({
@@ -146,8 +146,8 @@ describe('CandidateGenerator', () => {
     expect(mockBedrock.generateText).toHaveBeenCalledTimes(1);
   });
 
-  it('手番判定: 次ターンが集合知手番（aiSide=WHITE, currentTurn=1 → nextTurn=2=偶数=BLACK=集合知）の場合候補生成が実行される', async () => {
-    // aiSide='WHITE', currentTurn=1 → nextTurn=2 → 偶数 → BLACK → 集合知手番 → 候補生成
+  it('手番判定: 現在ターンが集合知手番（aiSide=WHITE, currentTurn=1=奇数=集合知）の場合候補生成が実行される', async () => {
+    // currentTurn=1 → 奇数 → 集合知手番 → 候補生成（aiSideに依存しない）
     const game = createMockGame({ aiSide: 'WHITE', currentTurn: 1 });
     vi.mocked(mockGameRepo.listByStatus).mockResolvedValue({ items: [game] });
     vi.mocked(mockCandidateRepo.listByTurn).mockResolvedValue([]);
@@ -306,7 +306,7 @@ describe('CandidateGenerator', () => {
     }
   });
 
-  it('votingDeadline検証: 保存される候補の votingDeadline が翌日JST 23:59:59.999 に設定される', async () => {
+  it('votingDeadline検証: 保存される候補の votingDeadline が当日JST 23:59:59.999 に設定される', async () => {
     vi.mocked(mockGameRepo.listByStatus).mockResolvedValue({
       items: [createMockGame()],
     });
@@ -327,14 +327,14 @@ describe('CandidateGenerator', () => {
       // JST に変換して 23:59:59.999 であることを検証
       const jstOffset = 9 * 60 * 60 * 1000;
       const jstDeadline = new Date(deadline.getTime() + jstOffset);
-      expect(jstDeadline.getHours()).toBe(23);
-      expect(jstDeadline.getMinutes()).toBe(59);
-      expect(jstDeadline.getSeconds()).toBe(59);
-      expect(jstDeadline.getMilliseconds()).toBe(999);
+      expect(jstDeadline.getUTCHours()).toBe(23);
+      expect(jstDeadline.getUTCMinutes()).toBe(59);
+      expect(jstDeadline.getUTCSeconds()).toBe(59);
+      expect(jstDeadline.getUTCMilliseconds()).toBe(999);
     }
   });
 
-  it('turnNumber検証: 保存される候補の turnNumber が currentTurn + 1 である', async () => {
+  it('turnNumber検証: 保存される候補の turnNumber が currentTurn である', async () => {
     const game = createMockGame({ currentTurn: 5 });
     vi.mocked(mockGameRepo.listByStatus).mockResolvedValue({ items: [game] });
     vi.mocked(mockCandidateRepo.listByTurn).mockResolvedValue([]);
@@ -348,7 +348,7 @@ describe('CandidateGenerator', () => {
 
     const calls = vi.mocked(mockCandidateRepo.create).mock.calls;
     for (const call of calls) {
-      expect(call[0].turnNumber).toBe(6); // currentTurn(5) + 1
+      expect(call[0].turnNumber).toBe(5); // currentTurn
     }
   });
 
@@ -400,7 +400,7 @@ describe('CandidateGenerator', () => {
     expect(summary.results[0].candidatesSaved).toBe(1);
   });
 
-  it('votingDeadline検証: 翌日のJST 23:59:59.999であること（日付が翌日）', async () => {
+  it('votingDeadline検証: 当日のJST 23:59:59.999であること', async () => {
     // テスト実行時の日付を固定
     const fixedNow = new Date('2024-06-15T10:00:00.000Z');
     vi.useFakeTimers();
@@ -423,18 +423,22 @@ describe('CandidateGenerator', () => {
 
     for (const call of calls) {
       const deadline = new Date(call[0].votingDeadline);
-      // deadline は fixedNow より未来であること
-      expect(deadline.getTime()).toBeGreaterThan(fixedNow.getTime());
       // JST に変換して 23:59:59.999 であることを検証
-      // calculateVotingDeadline は内部で JST オフセットを加算→ローカル時間操作→JST オフセットを減算
+      // calculateVotingDeadline は内部で JST オフセットを加算→UTC時間操作→JST オフセットを減算
       // するため、結果の JST 時刻部分が 23:59:59.999 であることを確認
       const jstOffset = 9 * 60 * 60 * 1000;
       const jstDeadline = new Date(deadline.getTime() + jstOffset);
-      // ローカル時間メソッドで検証（既存テストと同じアプローチ）
-      expect(jstDeadline.getHours()).toBe(23);
-      expect(jstDeadline.getMinutes()).toBe(59);
-      expect(jstDeadline.getSeconds()).toBe(59);
-      expect(jstDeadline.getMilliseconds()).toBe(999);
+      // UTC メソッドで検証（修正後は setUTCHours を使用）
+      expect(jstDeadline.getUTCHours()).toBe(23);
+      expect(jstDeadline.getUTCMinutes()).toBe(59);
+      expect(jstDeadline.getUTCSeconds()).toBe(59);
+      expect(jstDeadline.getUTCMilliseconds()).toBe(999);
+
+      // 当日の JST 日付であることを検証
+      const fixedNowJST = new Date(fixedNow.getTime() + jstOffset);
+      expect(jstDeadline.getUTCFullYear()).toBe(fixedNowJST.getUTCFullYear());
+      expect(jstDeadline.getUTCMonth()).toBe(fixedNowJST.getUTCMonth());
+      expect(jstDeadline.getUTCDate()).toBe(fixedNowJST.getUTCDate());
     }
 
     vi.useRealTimers();

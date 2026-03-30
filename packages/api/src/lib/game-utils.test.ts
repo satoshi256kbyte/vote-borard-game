@@ -55,14 +55,14 @@ describe('isAITurn', () => {
     expect(isAITurn(game)).toBe(true);
   });
 
-  it('奇数ターン(1) + aiSide=WHITE → AI の手番', () => {
+  it('奇数ターン(1) + aiSide=WHITE → 集合知の手番', () => {
     const game = createGameEntity({ currentTurn: 1, aiSide: 'WHITE' });
-    expect(isAITurn(game)).toBe(true);
+    expect(isAITurn(game)).toBe(false);
   });
 
-  it('偶数ターン(0) + aiSide=WHITE → 集合知の手番', () => {
+  it('偶数ターン(0) + aiSide=WHITE → AI の手番', () => {
     const game = createGameEntity({ currentTurn: 0, aiSide: 'WHITE' });
-    expect(isAITurn(game)).toBe(false);
+    expect(isAITurn(game)).toBe(true);
   });
 
   it('奇数ターン(1) + aiSide=BLACK → 集合知の手番', () => {
@@ -75,9 +75,9 @@ describe('isAITurn', () => {
     expect(isAITurn(game)).toBe(true);
   });
 
-  it('奇数ターン(3) + aiSide=WHITE → AI の手番', () => {
+  it('奇数ターン(3) + aiSide=WHITE → 集合知の手番', () => {
     const game = createGameEntity({ currentTurn: 3, aiSide: 'WHITE' });
-    expect(isAITurn(game)).toBe(true);
+    expect(isAITurn(game)).toBe(false);
   });
 });
 

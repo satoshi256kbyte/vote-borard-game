@@ -60,30 +60,31 @@ describe('Bugfix Exploration: C1 - calculateVotingDeadline() が当日の23:59:5
           })
           .filter((d) => !isNaN(d.getTime())),
         (now) => {
-          // calculateVotingDeadline の実際のロジックを再現（private メソッドのため）
+          // calculateVotingDeadline の修正後ロジックを再現（private メソッドのため）
+          // setUTCHours を使用してタイムゾーン非依存にする
           const jstOffset = 9 * 60 * 60 * 1000;
           const jstNow = new Date(now.getTime() + jstOffset);
 
-          // 現在のバグコードのロジック（翌日に加算してしまう）
-          const nextDay = new Date(jstNow);
-          nextDay.setDate(nextDay.getDate() + 1);
-          nextDay.setHours(23, 59, 59, 999);
-          const deadline = new Date(nextDay.getTime() - jstOffset);
+          // 修正後のロジック（翌日への加算なし）
+          // UTC ベースで時刻を設定（jstNow は JST→UTC シフト済みなので UTCHours で操作）
+          const today = new Date(jstNow);
+          today.setUTCHours(23, 59, 59, 999);
+          const deadline = new Date(today.getTime() - jstOffset);
 
           // 期待される正しい動作: deadline は now と同じ日付（JST）の 23:59:59.999
           const deadlineJST = new Date(deadline.getTime() + jstOffset);
           const nowJST = new Date(now.getTime() + jstOffset);
 
-          // 同じ日付であることを検証（バグコードでは翌日になるため FAIL）
+          // 同じ日付であることを検証
           expect(deadlineJST.getUTCFullYear()).toBe(nowJST.getUTCFullYear());
           expect(deadlineJST.getUTCMonth()).toBe(nowJST.getUTCMonth());
           expect(deadlineJST.getUTCDate()).toBe(nowJST.getUTCDate());
 
-          // 時刻が 23:59:59.999 であることを検証
-          expect(deadlineJST.getHours()).toBe(23);
-          expect(deadlineJST.getMinutes()).toBe(59);
-          expect(deadlineJST.getSeconds()).toBe(59);
-          expect(deadlineJST.getMilliseconds()).toBe(999);
+          // 時刻が 23:59:59.999 であることを検証（UTC で比較）
+          expect(deadlineJST.getUTCHours()).toBe(23);
+          expect(deadlineJST.getUTCMinutes()).toBe(59);
+          expect(deadlineJST.getUTCSeconds()).toBe(59);
+          expect(deadlineJST.getUTCMilliseconds()).toBe(999);
         }
       ),
       { numRuns: 20, endOnFailure: true }

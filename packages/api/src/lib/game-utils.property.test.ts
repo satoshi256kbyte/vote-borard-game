@@ -42,12 +42,12 @@ describe('game-utils Property Tests', () => {
   // Feature: 32-vote-tally-batch, Property 4: AI ターン判定
   /**
    * Property 4: AI ターン判定
-   * **Validates: Requirements 8.1**
+   * **Validates: Requirements 2.2, 3.5**
    *
    * 任意の currentTurn（非負整数）と aiSide に対して:
-   * - 偶数ターン + aiSide=BLACK → isAITurn は true
-   * - 奇数ターン + aiSide=WHITE → isAITurn は true
-   * - それ以外 → isAITurn は false
+   * - 偶数ターン → isAITurn は true（AIの手番）
+   * - 奇数ターン → isAITurn は false（集合知の手番）
+   * - aiSide の値は結果に影響しない
    */
   it('Property 4: AI ターン判定 - 任意の currentTurn と aiSide に対して正しく判定する', () => {
     fc.assert(
@@ -58,10 +58,7 @@ describe('game-utils Property Tests', () => {
           const game = createGameEntity(currentTurn, aiSide);
           const result = isAITurn(game);
 
-          const isEven = currentTurn % 2 === 0;
-          const expectedIsAI = (isEven && aiSide === 'BLACK') || (!isEven && aiSide === 'WHITE');
-
-          expect(result).toBe(expectedIsAI);
+          expect(result).toBe(currentTurn % 2 === 0);
         }
       ),
       { numRuns: 10, endOnFailure: true }

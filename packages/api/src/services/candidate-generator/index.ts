@@ -64,10 +64,9 @@ export class CandidateGenerator {
   private async processGame(game: GameEntity): Promise<GameProcessingResult> {
     console.log(JSON.stringify({ type: 'CANDIDATE_GENERATION_GAME_START', gameId: game.gameId }));
     try {
-      // 次のターンが AI 側の手番かチェック
-      const nextTurnGame = { ...game, currentTurn: game.currentTurn + 1 };
-      if (isAITurn(nextTurnGame)) {
-        const reason = 'Next turn is AI turn';
+      // 現在のターンが AI 側の手番かチェック
+      if (isAITurn(game)) {
+        const reason = 'Current turn is AI turn';
         console.log(
           JSON.stringify({ type: 'CANDIDATE_GENERATION_GAME_SKIPPED', gameId: game.gameId, reason })
         );
@@ -113,8 +112,11 @@ export class CandidateGenerator {
         };
       }
       // 既存候補を取得して重複チェック用に準備
-      const nextTurn = game.currentTurn + 1;
-      const existingCandidates = await this.candidateRepository.listByTurn(game.gameId, nextTurn);
+      const currentTurn = game.currentTurn;
+      const existingCandidates = await this.candidateRepository.listByTurn(
+        game.gameId,
+        currentTurn
+      );
       const existingPositions = new Set(existingCandidates.map((c) => c.position));
       // プロンプト構築 & AI呼び出し
       const currentPlayer =
@@ -162,7 +164,7 @@ export class CandidateGenerator {
       let savedCount = 0;
       for (const candidate of newCandidates) {
         try {
-          await this.saveCandidate(game.gameId, nextTurn, candidate, votingDeadline);
+          await this.saveCandidate(game.gameId, currentTurn, candidate, votingDeadline);
           savedCount++;
         } catch (error) {
           console.log(
@@ -226,10 +228,9 @@ export class CandidateGenerator {
     const now = new Date();
     const jstOffset = 9 * 60 * 60 * 1000;
     const jstNow = new Date(now.getTime() + jstOffset);
-    const nextDay = new Date(jstNow);
-    nextDay.setDate(nextDay.getDate() + 1);
-    nextDay.setHours(23, 59, 59, 999);
-    const deadline = new Date(nextDay.getTime() - jstOffset);
+    const today = new Date(jstNow);
+    today.setUTCHours(23, 59, 59, 999);
+    const deadline = new Date(today.getTime() - jstOffset);
     return deadline.toISOString();
   }
 }

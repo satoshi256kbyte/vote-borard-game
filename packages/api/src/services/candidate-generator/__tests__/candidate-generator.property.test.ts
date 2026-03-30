@@ -60,7 +60,7 @@ function createMockGame(overrides: Partial<GameEntity> = {}): GameEntity {
     gameType: 'OTHELLO',
     status: 'ACTIVE',
     aiSide: 'BLACK',
-    currentTurn: 2,
+    currentTurn: 3,
     boardState: validBoardState,
     createdAt: '2024-01-01T00:00:00.000Z',
     ...overrides,
@@ -97,39 +97,37 @@ describe('Feature: 33-ai-candidate-generation-batch, Property 1: 手番に基づ
    * **Validates: Requirements 1.1, 1.2**
    *
    * 任意の currentTurn（自然数）と aiSide（'BLACK' | 'WHITE'）に対して、
-   * isAITurn による次ターンの手番判定が CandidateGenerator のスキップ判定と一致することを検証する。
+   * isAITurn による現在ターンの手番判定が CandidateGenerator のスキップ判定と一致することを検証する。
    *
-   * 手番判定ロジック:
-   * - 偶数ターン = BLACK の手番
-   * - 奇数ターン = WHITE の手番
-   * - aiSide と一致すれば AI の手番 → 候補生成スキップ
+   * 修正後の手番判定ロジック:
+   * - 偶数ターン = AI の手番（aiSide に依存しない）
+   * - 奇数ターン = 集合知の手番
+   * - AI の手番 → 候補生成スキップ
    */
-  it('任意の currentTurn と aiSide に対して、isAITurn(nextTurn) が true なら候補生成スキップ、false なら実行される', () => {
+  it('任意の currentTurn と aiSide に対して、isAITurn(game) が true なら候補生成スキップ、false なら実行される', () => {
     fc.assert(
       fc.property(
         fc.nat({ max: 100 }),
         fc.constantFrom('BLACK' as const, 'WHITE' as const),
         (currentTurn, aiSide) => {
-          // 次ターンの手番を isAITurn で判定（CandidateGenerator と同じロジック）
-          const nextTurnGame = createMockGame({ currentTurn: currentTurn + 1, aiSide });
-          const isNextTurnAI = isAITurn(nextTurnGame);
+          // 現在ターンの手番を isAITurn で判定（修正後: aiSide に依存しない）
+          const game = createMockGame({ currentTurn, aiSide });
+          const isCurrentTurnAI = isAITurn(game);
 
-          // 手番判定ロジックの数学的検証
-          const nextTurn = currentTurn + 1;
-          const nextTurnColor = nextTurn % 2 === 0 ? 'BLACK' : 'WHITE';
-          const expectedIsAI = nextTurnColor === aiSide;
+          // 修正後の手番判定: 偶数ターン = AI
+          const expectedIsAI = currentTurn % 2 === 0;
 
           // isAITurn の結果が期待値と一致する
-          expect(isNextTurnAI).toBe(expectedIsAI);
+          expect(isCurrentTurnAI).toBe(expectedIsAI);
 
           // AI 手番の場合: スキップされるべき
           // 集合知手番の場合: 候補生成が実行されるべき
-          if (isNextTurnAI) {
-            // AI 手番 → CandidateGenerator は 'Next turn is AI turn' でスキップ
-            expect(nextTurnColor).toBe(aiSide);
+          if (isCurrentTurnAI) {
+            // AI 手番 → CandidateGenerator は 'Current turn is AI turn' でスキップ
+            expect(currentTurn % 2).toBe(0);
           } else {
             // 集合知手番 → CandidateGenerator は候補生成を実行
-            expect(nextTurnColor).not.toBe(aiSide);
+            expect(currentTurn % 2).toBe(1);
           }
         }
       ),
@@ -144,17 +142,17 @@ describe('Feature: 33-ai-candidate-generation-batch, Property 1: 手番に基づ
    * AI 手番の場合にスキップ、集合知手番の場合に候補生成が実行されることを統合的に検証する。
    */
   it('AI手番の対局はスキップされ、集合知手番の対局は候補生成が実行される（統合検証）', async () => {
-    // AI手番のケース: aiSide=BLACK, currentTurn=1 → nextTurn=2(偶数=BLACK=AI)
+    // AI手番のケース: currentTurn=0(偶数=AI手番) → スキップ
     const mockBedrock = createMockBedrockService();
     const mockGameRepo = createMockGameRepository();
     const mockCandidateRepo = createMockCandidateRepository();
     const generator = new CandidateGenerator(mockBedrock, mockGameRepo, mockCandidateRepo);
 
-    const aiTurnGame = createMockGame({ aiSide: 'BLACK', currentTurn: 1 });
+    const aiTurnGame = createMockGame({ aiSide: 'BLACK', currentTurn: 0 });
     const collectiveTurnGame = createMockGame({
       gameId: 'test-game-2',
       aiSide: 'BLACK',
-      currentTurn: 2,
+      currentTurn: 3,
     });
 
     vi.mocked(mockGameRepo.listByStatus).mockResolvedValue({
@@ -176,7 +174,7 @@ describe('Feature: 33-ai-candidate-generation-batch, Property 1: 手番に基づ
     // AI手番の対局はスキップ
     const aiTurnResult = summary.results.find((r) => r.gameId === aiTurnGame.gameId);
     expect(aiTurnResult?.status).toBe('skipped');
-    expect(aiTurnResult?.reason).toBe('Next turn is AI turn');
+    expect(aiTurnResult?.reason).toBe('Current turn is AI turn');
 
     // 集合知手番の対局は候補生成実行
     const collectiveResult = summary.results.find((r) => r.gameId === collectiveTurnGame.gameId);
@@ -345,11 +343,11 @@ describe('Feature: 33-ai-candidate-generation-batch, Property 7: 投票期限の
   /**
    * **Validates: Requirements 8.1**
    *
-   * 任意の実行時刻に対して、calculateVotingDeadline の結果が翌日 JST 23:59:59.999 であることを検証する。
+   * 任意の実行時刻に対して、calculateVotingDeadline の結果が当日 JST 23:59:59.999 であることを検証する。
    * CandidateGenerator の private メソッドを間接的にテストするため、
    * 同じロジックを再実装して検証する。
    */
-  it('任意の実行時刻に対して翌日 JST 23:59:59.999 が返される', () => {
+  it('任意の実行時刻に対して当日 JST 23:59:59.999 が返される', () => {
     fc.assert(
       fc.property(
         // 2020-01-01 〜 2030-12-31 の範囲でランダムな日時を生成（NaN を除外）
@@ -360,30 +358,26 @@ describe('Feature: 33-ai-candidate-generation-batch, Property 7: 投票期限の
           })
           .filter((d) => !isNaN(d.getTime())),
         (executionTime) => {
-          // calculateVotingDeadline と同じロジックを再現
+          // 修正後の calculateVotingDeadline ロジックを再現（翌日加算なし）
           const jstOffset = 9 * 60 * 60 * 1000;
           const jstNow = new Date(executionTime.getTime() + jstOffset);
-          const nextDay = new Date(jstNow);
-          nextDay.setDate(nextDay.getDate() + 1);
-          nextDay.setHours(23, 59, 59, 999);
-          const deadline = new Date(nextDay.getTime() - jstOffset);
+          const today = new Date(jstNow);
+          today.setUTCHours(23, 59, 59, 999);
+          const deadline = new Date(today.getTime() - jstOffset);
           const deadlineISO = deadline.toISOString();
 
           // 検証: deadline を JST に変換して 23:59:59.999 であること
           const deadlineJST = new Date(deadline.getTime() + jstOffset);
-          expect(deadlineJST.getHours()).toBe(23);
-          expect(deadlineJST.getMinutes()).toBe(59);
-          expect(deadlineJST.getSeconds()).toBe(59);
-          expect(deadlineJST.getMilliseconds()).toBe(999);
+          expect(deadlineJST.getUTCHours()).toBe(23);
+          expect(deadlineJST.getUTCMinutes()).toBe(59);
+          expect(deadlineJST.getUTCSeconds()).toBe(59);
+          expect(deadlineJST.getUTCMilliseconds()).toBe(999);
 
-          // 検証: deadline は executionTime の翌日（JST）であること
+          // 検証: deadline は executionTime と同じ日付（JST）であること
           const executionJSTDate = new Date(executionTime.getTime() + jstOffset);
-          // 月末の場合は翌月1日になるので、日付の差分で検証
-          const diffMs = deadlineJST.getTime() - executionJSTDate.getTime();
-          // 翌日の 23:59:59.999 なので、差分は 0ms 〜 約48時間の範囲
-          expect(diffMs).toBeGreaterThan(0);
-          // 最大でも約48時間（実行時刻が 0:00:00.000 の場合）
-          expect(diffMs).toBeLessThanOrEqual(48 * 60 * 60 * 1000);
+          expect(deadlineJST.getUTCFullYear()).toBe(executionJSTDate.getUTCFullYear());
+          expect(deadlineJST.getUTCMonth()).toBe(executionJSTDate.getUTCMonth());
+          expect(deadlineJST.getUTCDate()).toBe(executionJSTDate.getUTCDate());
 
           // 検証: ISO 8601 形式であること
           expect(deadlineISO).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
@@ -403,34 +397,32 @@ describe('Feature: 33-ai-candidate-generation-batch, Property 8: 候補メタデ
    * **Validates: Requirements 8.2, 8.3**
    *
    * 任意の currentTurn に対して、CandidateGenerator の saveCandidate が
-   * turnNumber = currentTurn + 1、createdBy = "AI" で候補を保存することを検証する。
+   * turnNumber = currentTurn、createdBy = "AI" で候補を保存することを検証する。
    * CandidateGenerator のロジックを再現し、保存パラメータの正確性を同期的に検証する。
    */
-  it('候補の turnNumber は currentTurn + 1、createdBy は "AI" である', () => {
+  it('候補の turnNumber は currentTurn、createdBy は "AI" である', () => {
     fc.assert(
       fc.property(fc.nat({ max: 200 }), (currentTurn) => {
-        const nextTurn = currentTurn + 1;
-
         // CandidateGenerator の saveCandidate で設定されるメタデータを検証
         // saveCandidate は以下のパラメータで candidateRepository.create を呼ぶ:
-        //   turnNumber: nextTurn (= currentTurn + 1)
+        //   turnNumber: currentTurn（修正後: currentTurn + 1 ではなく currentTurn）
         //   createdBy: 'AI'
         const candidateParams = {
           candidateId: 'test-uuid',
           gameId: 'test-game',
-          turnNumber: nextTurn,
+          turnNumber: currentTurn,
           position: '2,4',
           description: 'テスト候補',
           createdBy: 'AI' as const,
           votingDeadline: '2024-01-02T14:59:59.999Z',
         };
 
-        // turnNumber は currentTurn + 1
-        expect(candidateParams.turnNumber).toBe(currentTurn + 1);
+        // turnNumber は currentTurn
+        expect(candidateParams.turnNumber).toBe(currentTurn);
         // createdBy は "AI"
         expect(candidateParams.createdBy).toBe('AI');
-        // turnNumber は正の整数
-        expect(candidateParams.turnNumber).toBeGreaterThan(0);
+        // turnNumber は 0 以上の整数
+        expect(candidateParams.turnNumber).toBeGreaterThanOrEqual(0);
       }),
       { numRuns: 10, endOnFailure: true }
     );

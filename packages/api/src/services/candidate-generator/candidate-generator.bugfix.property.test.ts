@@ -113,26 +113,24 @@ describe('Bugfix Exploration: C3 - processGame() が currentTurn に対して候
    * C3: 候補は currentTurn に対して保存されるべき
    * **Validates: Requirements 1.3, 1.4**
    *
-   * 未修正コードでは currentTurn + 1 に保存するため FAIL する。
-   * aiSide='BLACK' + 偶数ターンで未修正コードが候補生成を実行するケースを使用。
+   * 修正後: 奇数ターン（集合知の手番）で候補が currentTurn に保存される。
    */
   it('候補の turnNumber が game.currentTurn と一致する', async () => {
-    const game = createMockGame({ aiSide: 'BLACK', currentTurn: 2 });
+    const game = createMockGame({ aiSide: 'BLACK', currentTurn: 1 });
     const { createCalls } = await runGenerator(game, whitePlayerAIResponse);
 
     expect(createCalls.length).toBeGreaterThan(0);
     for (const call of createCalls) {
-      // 未修正コードでは turnNumber = 3 (currentTurn + 1) になるため FAIL
       expect(call[0].turnNumber).toBe(game.currentTurn);
     }
   });
 
   /**
-   * C3 プロパティ: 複数の偶数 currentTurn に対して候補が currentTurn に保存される
+   * C3 プロパティ: 複数の奇数 currentTurn に対して候補が currentTurn に保存される
    * **Validates: Requirements 1.3, 1.4**
    */
-  it('複数の偶数 currentTurn に対して候補が currentTurn に保存される', async () => {
-    for (const currentTurn of [2, 4, 6, 8]) {
+  it('複数の奇数 currentTurn に対して候補が currentTurn に保存される', async () => {
+    for (const currentTurn of [1, 3, 5, 7]) {
       const game = createMockGame({ aiSide: 'BLACK', currentTurn });
       const { createCalls } = await runGenerator(game, whitePlayerAIResponse);
 

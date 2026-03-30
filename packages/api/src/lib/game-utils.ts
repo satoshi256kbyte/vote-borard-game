@@ -11,13 +11,11 @@ import { countDiscs, CellState } from './othello/index.js';
 /**
  * 現在の手番がAI側かどうかを判定する
  *
- * 偶数ターン → 黒の手番（先手）
- * 奇数ターン → 白の手番（後手）
- * aiSide と一致すれば AI の手番
+ * 偶数ターン → AIの手番（先手）
+ * 奇数ターン → 集合知の手番（後手）
  */
 export function isAITurn(game: GameEntity): boolean {
-  const currentColor = game.currentTurn % 2 === 0 ? 'BLACK' : 'WHITE';
-  return currentColor === game.aiSide;
+  return game.currentTurn % 2 === 0;
 }
 
 /**

@@ -46,14 +46,14 @@ describe('prompt-builder', () => {
       expect(isAITurn(game)).toBe(true);
     });
 
-    it('偶数ターンで aiSide=WHITE の場合はAIの手番ではない', () => {
+    it('偶数ターンで aiSide=WHITE の場合もAIの手番（偶数ターン=常にAI）', () => {
       const game = createMockGame({ currentTurn: 0, aiSide: 'WHITE' });
-      expect(isAITurn(game)).toBe(false);
+      expect(isAITurn(game)).toBe(true);
     });
 
-    it('奇数ターンで aiSide=WHITE の場合はAIの手番', () => {
+    it('奇数ターンで aiSide=WHITE の場合はAIの手番ではない（奇数ターン=常に集合知）', () => {
       const game = createMockGame({ currentTurn: 1, aiSide: 'WHITE' });
-      expect(isAITurn(game)).toBe(true);
+      expect(isAITurn(game)).toBe(false);
     });
 
     it('奇数ターンで aiSide=BLACK の場合はAIの手番ではない', () => {
@@ -66,9 +66,9 @@ describe('prompt-builder', () => {
       expect(isAITurn(game)).toBe(true);
     });
 
-    it('ターン11で aiSide=WHITE の場合はAIの手番', () => {
+    it('ターン11で aiSide=WHITE の場合はAIの手番ではない（奇数ターン=集合知）', () => {
       const game = createMockGame({ currentTurn: 11, aiSide: 'WHITE' });
-      expect(isAITurn(game)).toBe(true);
+      expect(isAITurn(game)).toBe(false);
     });
   });
 

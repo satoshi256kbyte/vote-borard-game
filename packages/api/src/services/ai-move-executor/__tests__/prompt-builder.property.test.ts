@@ -43,13 +43,13 @@ function createMockGame(currentTurn: number, aiSide: 'BLACK' | 'WHITE'): GameEnt
 
 // Feature: ai-move-execution, Property 1: 手番判定の正確性
 describe('Feature: ai-move-execution, Property 1: 手番判定の正確性', () => {
-  it('偶数ターンは黒の手番、奇数ターンは白の手番として判定し、aiSideと一致する場合のみtrue', () => {
+  it('偶数ターンは常にAIの手番、奇数ターンは常に集合知の手番（aiSideに依存しない）', () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 100 }), aiSideArb, (currentTurn, aiSide) => {
         const game = createMockGame(currentTurn, aiSide);
         const result = isAITurn(game);
-        const expectedColor = currentTurn % 2 === 0 ? 'BLACK' : 'WHITE';
-        expect(result).toBe(expectedColor === aiSide);
+        const expected = currentTurn % 2 === 0;
+        expect(result).toBe(expected);
       }),
       { numRuns: 20, endOnFailure: true }
     );

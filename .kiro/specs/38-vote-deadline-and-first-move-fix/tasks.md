@@ -37,7 +37,7 @@
   - _Requirements: 3.2, 3.3, 3.4, 3.5, 3.7_
 
 - [ ] 3. 投票締切・初手判定・候補ターン番号バグの修正
-  - [~] 3.1 isAITurn() の手番判定ロジックを修正
+  - [x] 3.1 isAITurn() の手番判定ロジックを修正
     - `packages/api/src/lib/game-utils.ts` の `isAITurn()` を修正
     - 変更前: `const currentColor = game.currentTurn % 2 === 0 ? 'BLACK' : 'WHITE'; return currentColor === game.aiSide;`
     - 変更後: `return game.currentTurn % 2 === 0;`（偶数ターン = AI側）
@@ -47,7 +47,7 @@
     - _Preservation: aiSide='BLACK' のゲームでは修正前後で isAITurn() の結果が一致_
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.5_
 
-  - [~] 3.2 calculateVotingDeadline() の日付加算を削除
+  - [x] 3.2 calculateVotingDeadline() の日付加算を削除
     - `packages/api/src/services/candidate-generator/index.ts` の `calculateVotingDeadline()` を修正
     - `nextDay.setDate(nextDay.getDate() + 1)` の行を削除
     - 変数名を `nextDay` → `today` に変更（意味の明確化）
@@ -56,7 +56,7 @@
     - _Preservation: 候補の position、description、createdBy 等の属性保存は変更なし_
     - _Requirements: 2.1, 3.1_
 
-  - [~] 3.3 CandidateGenerator の候補ターン番号と スキップ判定を修正
+  - [x] 3.3 CandidateGenerator の候補ターン番号と スキップ判定を修正
     - `packages/api/src/services/candidate-generator/index.ts` の `processGame()` を修正
     - `nextTurn = game.currentTurn + 1` → `game.currentTurn` に変更（候補を現在のターンに保存）
     - `isAITurn({ ...game, currentTurn: game.currentTurn + 1 })` → `isAITurn(game)` に変更（現在のターンがAIの手番かチェック）
@@ -65,13 +65,13 @@
     - _Preservation: バッチ処理の実行順序（投票集計 → AI手実行 → 候補生成）は維持_
     - _Requirements: 2.3, 2.4, 2.5, 3.1, 3.6_
 
-  - [~] 3.4 既存の isAITurn ユニットテスト・プロパティテストを修正後のロジックに合わせて更新
+  - [x] 3.4 既存の isAITurn ユニットテスト・プロパティテストを修正後のロジックに合わせて更新
     - `packages/api/src/lib/game-utils.test.ts` の isAITurn テストケースを更新
     - `packages/api/src/lib/game-utils.property.test.ts` の Property 4 を更新
     - 修正後: 偶数ターンは常に `true`、奇数ターンは常に `false`（aiSide に依存しない）
     - _Requirements: 2.2, 3.5_
 
-  - [~] 3.5 バグ条件探索テストが PASS することを確認
+  - [x] 3.5 バグ条件探索テストが PASS することを確認
     - **Property 1: Expected Behavior** - 投票締切・初手判定・候補ターン番号の正しい動作
     - **IMPORTANT**: タスク1で作成した同じテストを再実行する — 新しいテストは書かない
     - タスク1のテストは期待される正しい動作をエンコードしている
@@ -80,7 +80,7 @@
     - **EXPECTED OUTCOME**: テストが PASS する（バグが修正されたことを確認）
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-  - [~] 3.6 保全テストが引き続き PASS することを確認
+  - [-] 3.6 保全テストが引き続き PASS することを確認
     - **Property 2: Preservation** - aiSide='BLACK' の動作・投票集計・AI手実行の保全
     - **IMPORTANT**: タスク2で作成した同じテストを再実行する — 新しいテストは書かない
     - タスク2の保全テストを実行
