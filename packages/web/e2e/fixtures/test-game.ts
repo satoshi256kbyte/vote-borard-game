@@ -46,8 +46,13 @@ export const testGame = base.extend<{
     } finally {
       // Cleanup test game
       if (game) {
-        await cleanupTestGame(game);
-        console.log(`[TestGame] Cleaned up test game: ${game.gameId}`);
+        try {
+          await cleanupTestGame(game);
+          console.log(`[TestGame] Cleaned up test game: ${game.gameId}`);
+        } catch (error) {
+          console.error(`[TestGame] Cleanup failed: ${error}`);
+          // テスト結果に影響させない
+        }
       }
     }
   },
