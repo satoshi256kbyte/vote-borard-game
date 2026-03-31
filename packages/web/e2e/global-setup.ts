@@ -4,6 +4,7 @@
  */
 
 import { isCognitoAvailable, formatCognitoUnavailableWarning } from './helpers';
+import { cleanupE2EData } from './helpers/e2e-cleanup';
 
 const TIMEOUT_MS = 30000; // 30 seconds
 
@@ -143,6 +144,36 @@ export default async function globalSetup() {
       console.warn('\n⚠️  Some tests may be skipped due to Cognito unavailability\n');
     } else {
       console.log('✅ Cognito service is available\n');
+    }
+
+    // Pre-cleanup: remove residual E2E test data from previous runs
+    // Requirements 1.1-1.4: cleanupE2EData after service availability check
+    const tableName = process.env.DYNAMODB_TABLE_NAME;
+    if (!tableName) {
+      console.log('⚠️  DYNAMODB_TABLE_NAME not set, skipping pre-cleanup\n');
+    } else {
+      try {
+        const result = await cleanupE2EData(tableName);
+        if (result.gamesDeleted === 0) {
+          console.log('✅ 残留E2Eデータなし\n');
+        } else {
+          console.log(
+            `🧹 Pre-cleanup: deleted ${result.gamesDeleted} games, ${result.candidatesDeleted} candidates\n`
+          );
+        }
+        if (result.errors.length > 0) {
+          console.warn(
+            `⚠️  Pre-cleanup completed with ${result.errors.length} error(s):\n` +
+              result.errors.map((e) => `   - ${e}`).join('\n') +
+              '\n'
+          );
+        }
+      } catch (error) {
+        console.error(
+          `⚠️  Pre-cleanup failed: ${error instanceof Error ? error.message : error}\n`
+        );
+        // Continue test execution even if pre-cleanup fails (Requirement 1.4)
+      }
     }
 
     console.log('✓ Test environment is ready\n');
