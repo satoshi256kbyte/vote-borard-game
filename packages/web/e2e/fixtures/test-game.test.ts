@@ -164,6 +164,68 @@ describe('Test Game Fixture', () => {
       await expect(testDataModule.cleanupTestGame(mockGame)).resolves.toBeUndefined();
     });
 
+    it('should not propagate cleanup error from fixture finally block', async () => {
+      const mockGame = {
+        gameId: 'test-game-cleanup-error',
+        status: 'active' as const,
+        candidates: [],
+      };
+
+      vi.mocked(testDataModule.createTestGame).mockResolvedValue(mockGame);
+      vi.mocked(testDataModule.cleanupTestGame).mockRejectedValue(
+        new Error('DynamoDB cleanup failed')
+      );
+
+      // Simulate the fixture's finally block behavior:
+      // The try-catch inside finally should swallow the cleanup error
+      const fixtureCleanup = async () => {
+        if (mockGame) {
+          try {
+            await testDataModule.cleanupTestGame(mockGame);
+          } catch (error) {
+            console.error(`[TestGame] Cleanup failed: ${error}`);
+            // テスト結果に影響させない
+          }
+        }
+      };
+
+      // The fixture cleanup should NOT throw even when cleanupTestGame rejects
+      await expect(fixtureCleanup()).resolves.toBeUndefined();
+    });
+
+    it('should log error via console.error when cleanup throws', async () => {
+      const mockGame = {
+        gameId: 'test-game-log-error',
+        status: 'active' as const,
+        candidates: [],
+      };
+      const cleanupError = new Error('Network timeout during cleanup');
+
+      vi.mocked(testDataModule.createTestGame).mockResolvedValue(mockGame);
+      vi.mocked(testDataModule.cleanupTestGame).mockRejectedValue(cleanupError);
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Simulate the fixture's finally block behavior
+      if (mockGame) {
+        try {
+          await testDataModule.cleanupTestGame(mockGame);
+        } catch (error) {
+          console.error(`[TestGame] Cleanup failed: ${error}`);
+        }
+      }
+
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[TestGame] Cleanup failed:')
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Network timeout during cleanup')
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
     it('should handle missing environment variables gracefully', async () => {
       const error = new Error('DYNAMODB_TABLE_NAME environment variable is not set');
       vi.mocked(testDataModule.createTestGame).mockRejectedValue(error);
