@@ -152,12 +152,14 @@ test.describe.skip('Loading States - Form Submission (Task 6.3)', () => {
     const submitButton = authenticatedPage.locator('button[type="submit"]');
     await expect(submitButton).toBeEnabled();
 
-    // Intercept API request to delay response
+    // Intercept POST /api/games to inject tags: ["E2E"] for cleanup and delay response
     await authenticatedPage.route('**/api/games', async (route) => {
       if (route.request().method() === 'POST') {
+        const postData = route.request().postDataJSON();
+        postData.tags = ['E2E'];
         // Delay response to observe loading state
         await new Promise((resolve) => setTimeout(resolve, 2000));
-        await route.continue();
+        await route.continue({ postData: JSON.stringify(postData) });
       } else {
         await route.continue();
       }
@@ -186,11 +188,13 @@ test.describe.skip('Loading States - Form Submission (Task 6.3)', () => {
     // Verify initial button text
     await expect(submitButton).toContainText('対局を作成');
 
-    // Intercept API request to delay response
+    // Intercept POST /api/games to inject tags: ["E2E"] for cleanup and delay response
     await authenticatedPage.route('**/api/games', async (route) => {
       if (route.request().method() === 'POST') {
+        const postData = route.request().postDataJSON();
+        postData.tags = ['E2E'];
         await new Promise((resolve) => setTimeout(resolve, 2000));
-        await route.continue();
+        await route.continue({ postData: JSON.stringify(postData) });
       } else {
         await route.continue();
       }
@@ -212,6 +216,18 @@ test.describe.skip('Loading States - Form Submission (Task 6.3)', () => {
 
     // Wait for page to load
     await authenticatedPage.waitForLoadState('networkidle');
+
+    // Intercept POST /api/games to inject tags: ["E2E"] for cleanup
+    await authenticatedPage.route('**/api/games', async (route) => {
+      const request = route.request();
+      if (request.method() === 'POST') {
+        const postData = request.postDataJSON();
+        postData.tags = ['E2E'];
+        await route.continue({ postData: JSON.stringify(postData) });
+      } else {
+        await route.continue();
+      }
+    });
 
     // Submit form
     const submitButton = authenticatedPage.locator('button[type="submit"]');
