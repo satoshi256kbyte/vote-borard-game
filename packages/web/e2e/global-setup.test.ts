@@ -12,6 +12,13 @@ vi.mock('./helpers', () => ({
   formatCognitoUnavailableWarning: vi.fn(() => 'Cognito unavailable warning'),
 }));
 
+// Mock the e2e-cleanup module
+vi.mock('./helpers/e2e-cleanup', () => ({
+  cleanupE2EData: vi.fn(),
+}));
+
+import { cleanupE2EData } from './helpers/e2e-cleanup';
+
 // Mock fetch
 global.fetch = vi.fn();
 
@@ -308,6 +315,68 @@ describe('globalSetup', () => {
 
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Test environment is ready')
+      );
+    });
+  });
+
+  describe('Pre-cleanup of residual E2E data', () => {
+    beforeEach(() => {
+      process.env.BASE_URL = 'http://localhost:3000';
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+      } as Response);
+      vi.mocked(helpers.isCognitoAvailable).mockResolvedValue(true);
+    });
+
+    it('should log "残留E2Eデータなし" when gamesDeleted is 0', async () => {
+      process.env.DYNAMODB_TABLE_NAME = 'test-table';
+      vi.mocked(cleanupE2EData).mockResolvedValue({
+        gamesDeleted: 0,
+        candidatesDeleted: 0,
+        errors: [],
+      });
+
+      await globalSetup();
+
+      expect(cleanupE2EData).toHaveBeenCalledWith('test-table');
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('残留E2Eデータなし'));
+    });
+
+    it('should log deletion counts when gamesDeleted > 0', async () => {
+      process.env.DYNAMODB_TABLE_NAME = 'test-table';
+      vi.mocked(cleanupE2EData).mockResolvedValue({
+        gamesDeleted: 2,
+        candidatesDeleted: 5,
+        errors: [],
+      });
+
+      await globalSetup();
+
+      expect(cleanupE2EData).toHaveBeenCalledWith('test-table');
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('deleted 2 games, 5 candidates')
+      );
+    });
+
+    it('should not throw when cleanupE2EData throws an error', async () => {
+      process.env.DYNAMODB_TABLE_NAME = 'test-table';
+      vi.mocked(cleanupE2EData).mockRejectedValue(new Error('DynamoDB connection failed'));
+
+      await expect(globalSetup()).resolves.toBeUndefined();
+
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Pre-cleanup failed'));
+    });
+
+    it('should skip cleanup when DYNAMODB_TABLE_NAME is not set', async () => {
+      delete process.env.DYNAMODB_TABLE_NAME;
+
+      await globalSetup();
+
+      expect(cleanupE2EData).not.toHaveBeenCalled();
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('DYNAMODB_TABLE_NAME not set, skipping pre-cleanup')
       );
     });
   });
