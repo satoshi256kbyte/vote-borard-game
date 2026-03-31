@@ -89,6 +89,18 @@ test.describe('Game Creation Flow - Success Behavior (Task 3.4)', () => {
       }
     });
 
+    // Intercept POST /api/games to inject tags: ["E2E"] for cleanup
+    await authenticatedPage.route('**/api/games', async (route) => {
+      const request = route.request();
+      if (request.method() === 'POST') {
+        const postData = request.postDataJSON();
+        postData.tags = ['E2E'];
+        await route.continue({ postData: JSON.stringify(postData) });
+      } else {
+        await route.continue();
+      }
+    });
+
     // Navigate to game creation page
     await authenticatedPage.goto('/games/new');
 

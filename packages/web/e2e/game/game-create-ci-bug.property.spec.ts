@@ -25,6 +25,18 @@ test.describe('Bug Condition Exploration: CI Environment Game Creation', () => {
   test('Property 1: Game creation succeeds and redirects in CI environment', async ({
     authenticatedPage,
   }) => {
+    // Intercept POST /api/games to inject tags: ["E2E"] for cleanup
+    await authenticatedPage.route('**/api/games', async (route) => {
+      const request = route.request();
+      if (request.method() === 'POST') {
+        const postData = request.postDataJSON();
+        postData.tags = ['E2E'];
+        await route.continue({ postData: JSON.stringify(postData) });
+      } else {
+        await route.continue();
+      }
+    });
+
     // Property-based test with scoped input space for deterministic bug
     // We test both AI color choices to ensure the bug is not color-specific
     await fc.assert(
